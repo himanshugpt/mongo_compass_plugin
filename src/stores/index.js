@@ -80,8 +80,46 @@ const CompassPluginStore = Reflux.createStore({
 * handlers for import csv action defined in ../actions/index.jsx
 */
   importButtonClicked(){
-    // open file dialog
-    dialog.showOpenDialog({properties: ['openFile', 'openDirectory']});
+    
+    dialog.showOpenDialog((fileNames) => {
+    // fileNames is an array that contains all the selected
+    if(fileNames === undefined){
+        console.log("No file selected");
+        return;
+    }
+
+    //console.log(fileNames)
+
+    fs.readFile(fileNames[0], 'utf-8', (err, data) => {
+        if(err){
+            alert("An error ocurred reading the file :" + err.message);
+            return;
+        }
+
+        let {dataService} = this.state;
+        let lines = data.split("\n");
+        let result = [];
+        let headers = lines[0].split(",");
+
+        for(let i=1;i<lines.length;i++){
+          var obj = {};
+          var currentline=lines[i].split(",");
+          for(var j=0;j<headers.length;j++){
+            obj[headers[j]] = currentline[j];
+          }
+          //dataService.insert('audit.actions_tmp', obj);
+          result.push(obj);
+        }
+
+        dataService.insertMany('audit.actions_tmp', 
+                                result, null, 
+                                (err, data) => {
+                                                  alert('All docs inserted');
+                                });
+
+    });
+});
+ 
   },
 
   /**
@@ -95,9 +133,6 @@ const CompassPluginStore = Reflux.createStore({
     const ns = NamespaceStore.ns;
     debug(NamespaceStore);
     debug(ns);
-
-    
-
     let {dataService} = this.state;
     let content = "";
 
