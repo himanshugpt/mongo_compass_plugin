@@ -6,9 +6,14 @@ const ToggleButton = require('./toggle-button');
 // const debug = require('debug')('mongodb-compass:compass-plugin');
 
 class CompassPluginComponent extends React.Component {
-    	onClick(){
-	    CompassPluginActions.exportButtonClicked();
-        }
+    	
+      handleExport(){
+	       CompassPluginActions.exportButtonClicked();
+      }
+
+      handleImport(){
+        CompassPluginActions.importButtonClicked();
+      }
 
   /**
    * Render CompassPlugin component.
@@ -18,9 +23,13 @@ class CompassPluginComponent extends React.Component {
   render() {
     return (
       <div className="compass-plugin">
-        <ToggleButton onClick={this.onClick} >
+        <ToggleButton onClick={this.handleExport} >
       		Export to csv
       	</ToggleButton>
+        <br/> <br/>
+        <ToggleButton onClick={this.handleImport} >
+          Import csv
+        </ToggleButton>
       </div>
     );
   }

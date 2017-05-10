@@ -1,8 +1,11 @@
 const Reflux = require('reflux');
 const CompassPluginActions = require('../actions');
 const StateMixin = require('reflux-state-mixin');
-
+const NamespaceStore = require('hadron-reflux-store').NamespaceStore;
 const debug = require('debug')('mongodb-compass:stores:compass-plugin');
+var fs = require('fs'); // Load the File System to execute our common tasks (CRUD)
+
+const {dialog} = require('electron').remote
 
 /**
  * Compass Plugin store.
@@ -56,6 +59,7 @@ const CompassPluginStore = Reflux.createStore({
    *
    */
   onConnected(error, dataService) {
+    this.setState({'dataService': dataService});
   },
 
   /**
@@ -67,8 +71,17 @@ const CompassPluginStore = Reflux.createStore({
   getInitialState() {
     return {
       status: 'enabled',
-      exportProgress: ''
+      exportProgress: '',
+      dataService: ''
     };
+  },
+
+/**
+* handlers for import csv action defined in ../actions/index.jsx
+*/
+  importButtonClicked(){
+    // open file dialog
+    dialog.showOpenDialog({properties: ['openFile', 'openDirectory']});
   },
 
   /**
@@ -79,6 +92,48 @@ const CompassPluginStore = Reflux.createStore({
     //   status: this.state.status === 'enabled' ? 'disabled' : 'enabled'
     // });
     debug('buttton clicked',  this.state);
+    const ns = NamespaceStore.ns;
+    debug(NamespaceStore);
+    debug(ns);
+
+    
+
+    let {dataService} = this.state;
+    let content = "";
+
+    dataService.find('audit.actions', {}, {}, (error, documents) => {
+      //assert.equal(null, error);
+      //for (var doc of documents) {
+      //  content += JSON.stringify(doc) + "\n";
+      //}
+
+      const items = documents
+      const replacer = (key, value) => value === null ? '' : value // specify how you want to handle null values here
+      const header = Object.keys(items[0])
+      let csv = items.map(row => header.map(fieldName => JSON.stringify(row[fieldName], replacer)).join(','))
+      csv.unshift(header.join(','))
+      csv = csv.join('\r\n')
+      content = csv
+
+    });
+
+    dialog.showSaveDialog((fileName) => {
+    if (fileName === undefined){
+        console.log("You didn't save the file");
+        return;
+    }
+
+    // fileName is a string that contains the path and filename created in the save file dialog.  
+    fs.writeFile(fileName, content, (err) => {
+        if(err){
+            alert("An error ocurred creating the file "+ err.message)
+        }
+                    
+        alert("The file has been succesfully saved");
+    });
+}); 
+
+
   },
 
   /**
