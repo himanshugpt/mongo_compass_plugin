@@ -4,6 +4,7 @@ const StateMixin = require('reflux-state-mixin');
 const NamespaceStore = require('hadron-reflux-store').NamespaceStore;
 const debug = require('debug')('mongodb-compass:stores:compass-plugin');
 var fs = require('fs'); // Load the File System to execute our common tasks (CRUD)
+var ObjectID = require("bson-objectid");
 
 const {dialog} = require('electron').remote
 
@@ -76,10 +77,15 @@ const CompassPluginStore = Reflux.createStore({
     };
   },
 
-/**
-* handlers for import csv action defined in ../actions/index.jsx
-*/
+  /**
+    * handlers for import csv action defined in ../actions/index.jsx
+    */
   importButtonClicked(){
+    const ns = NamespaceStore.ns;
+    debug("*******************************");
+    debug(NamespaceStore);
+    debug(ns);
+    debug("*******************************");
     
     dialog.showOpenDialog((fileNames) => {
     // fileNames is an array that contains all the selected
@@ -88,35 +94,48 @@ const CompassPluginStore = Reflux.createStore({
         return;
     }
 
-    //console.log(fileNames)
-
     fs.readFile(fileNames[0], 'utf-8', (err, data) => {
         if(err){
             alert("An error ocurred reading the file :" + err.message);
             return;
         }
-
+        //debug(fileNames[0]);
+        //debug(data);
         let {dataService} = this.state;
-        let lines = data.split("\n");
+        let lines = data.split('\n');
+        //debug("lines content " + lines[0]);
+        //debug("lines.length " + lines.length);
         let result = [];
         let headers = lines[0].split(",");
-
+        
         for(let i=1;i<lines.length;i++){
-          var obj = {};
-          var currentline=lines[i].split(",");
-          for(var j=0;j<headers.length;j++){
-            obj[headers[j]] = currentline[j];
+          let obj = {};
+          let currentline = lines[i].split(",");
+          for(var j=0; j<headers.length; j++){
+            let str = currentline[j].trim().replace(/^"|"$/g, '');
+            if(headers[j] == "_id"){
+              obj[headers[j]] = ObjectID(str);
+            }else{
+              obj[headers[j]] = str;
+            }
+            
+            //debug(currentline[j]);
           }
-          //dataService.insert('audit.actions_tmp', obj);
+         // console.log(obj);
+          debug(obj);
           result.push(obj);
         }
-
-        dataService.insertMany('audit.actions_tmp', 
-                                result, null, 
+        //['upsert': true],
+        dataService.insertMany('census_staging.stateArea',
+                                result, 
                                 (err, data) => {
-                                                  alert('All docs inserted');
+                                    if(err) {
+                                      alert('Error!');
+                                      debug(err);
+                                    }
+                                    else alert('All docs inserted');
                                 });
-
+    
     });
 });
  
@@ -126,9 +145,6 @@ const CompassPluginStore = Reflux.createStore({
    * handlers for each action defined in ../actions/index.jsx, for example:
    */
   exportButtonClicked() {
-    // this.setState({
-    //   status: this.state.status === 'enabled' ? 'disabled' : 'enabled'
-    // });
     debug('buttton clicked',  this.state);
     const ns = NamespaceStore.ns;
     debug(NamespaceStore);
@@ -136,7 +152,7 @@ const CompassPluginStore = Reflux.createStore({
     let {dataService} = this.state;
     let content = "";
 
-    dataService.find('audit.actions', {}, {}, (error, documents) => {
+    dataService.find('census.stateArea', {}, {}, (error, documents) => {
       //assert.equal(null, error);
       //for (var doc of documents) {
       //  content += JSON.stringify(doc) + "\n";
@@ -147,7 +163,7 @@ const CompassPluginStore = Reflux.createStore({
       const header = Object.keys(items[0])
       let csv = items.map(row => header.map(fieldName => JSON.stringify(row[fieldName], replacer)).join(','))
       csv.unshift(header.join(','))
-      csv = csv.join('\r\n')
+      csv = csv.join('\n')
       content = csv
 
     });
