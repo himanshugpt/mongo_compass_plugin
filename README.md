@@ -8,7 +8,7 @@ TODO
 
 ## Usage
 
-TODO
+![GIF](/import-export.gif?raw=true)
 
 ## License
 
